@@ -1,0 +1,106 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+"http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+
+<!-- namespace为mapper接口的全限定名
+	目的是通过mapper.xml和mapper.java进行关联 
+-->
+<mapper namespace="mybatis.mapper.UserMapper">
+	
+	<!-- 将用户查询条件定义为sql片段 -->
+	<sql id="query_user_where">
+		<!-- 如果userQueryVo中传入查询条件，在进行sql拼接 -->
+		<!-- test中userCustomer.username表示从userQueryVo读取属性值 -->
+		<if test="userCustomer!=null">
+			<if test="userCustomer.username!=null and userCustomer.username!=''">
+				and username like '%${userCustomer.username}%'
+			</if>
+			<if test="userCustomer.sex!=null and userCustomer.sex!=''">
+				and sex = #{userCustomer.sex}
+			</if>
+			
+			<!-- 根据id集合查询用户信息 
+				collection:集合的属性
+				open：开始循环要拼接的串
+				close：结束循环要拼接的串
+				item：每次循环取到的对象
+				separator：每两次循环中间拼接的串
+			-->
+			<foreach collection="ids" open=" and id in(" close=")" item="id" separator=",">
+				#{id}
+			</foreach>
+		</if>
+	</sql>
+	
+	<!-- 定义resultMap，列名和属性名映射配置 
+		id:mapper.xml中唯一表示
+		type：最终要映射的pojo类型
+	-->
+	<resultMap type="user" id="userListResultMap">
+		<!-- id:要映射结果集的唯一标识 
+			 column：结果集的列明
+			 property：type指定的哪个属性中
+		-->
+		<id column="id_" property="id" />
+		<result column="username_" property="username"/>
+		<result column="birthday_" property="birthday"/>
+	</resultMap>
+	
+	
+	<!-- 根据id查询用户（单条记录） 
+		parameterType：输入参数的类型
+		resultType：输出结果的类型，不管是单条还是多条，指定单条记录映射的pojo类型
+		#{}：表示一个占位符，#{}中的名称随意
+	-->
+	<select id="findUserById" parameterType="int" resultType="User">
+		select * from user where id=#{id}
+	</select>
+	
+	<!-- 根据用户名查询用户（单条记录或多条记录） 
+		${}：表示sql的拼接，通过${}接收参数，将参数的内容不加任何修饰拼接在sql中
+	-->
+	<select id="findUserByName" parameterType="String" resultType="User">
+		select * from user where username like '%${value}%'
+	</select>
+	
+	<!-- 自定义查询条件查询用户信息 
+		parameterType：指定包装类型
+		%${userCustomer.username}%：userCustomer是userQueryVo中的属性，通过OGNL获取属性的值
+	-->
+	<select id="findUserList" parameterType="userQueryVo" resultType="User">
+		select id,username,birthday from user
+		<!-- where标签相当于where关键字，可以自动去除第一个and -->
+		<where>
+			<!-- 引用sql片段 -->
+			<include refid="query_user_where"></include>
+		</where>
+	</select>
+	
+	<!-- 使用resultMap做结果映射 -->
+		<select id="findUserListResultMap" parameterType="userQueryVo" resultMap="userListResultMap">
+			select id id_,username username_,birthday birthday_ from user where username like '%${userCustomer.username}%'
+		</select>
+	
+	<!-- 输出简单类型 
+		功能：自定义查询条件，返回查询记录的个数，通常用于实现查询分页
+	-->
+	<select id="findUserCount" parameterType="userQueryVo" resultType="int">
+		select count(*) from user where username like '%${userCustomer.username}%'
+	</select>
+	
+	<!-- 添加用户 -->
+	<insert id="insertUser" parameterType="User">
+		insert into user(username,birthday,sex,address) value(#{username},#{birthday},#{sex},#{address})
+	</insert>
+	
+	<!-- 根据id删除用户 -->
+	<delete id="deleteUser" parameterType="int">
+		delete from user where id=#{id}
+	</delete>
+	
+	<!-- 修改用户 -->
+	<update id="updateUser" parameterType="User">
+		update user set username=#{username},birthday=#{birthday},sex=#{sex},address=#{address} where id=#{id}
+	</update>
+</mapper>
